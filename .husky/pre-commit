@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+set -e
+cd "$(dirname "$0")/.." || exit 1
+
+npm run check:naming
+
+if [ -x ./.venv/bin/ruff ]; then
+  ./.venv/bin/ruff check src tests
+  ./.venv/bin/ruff format --check src tests
+fi
+
+npx lint-staged

@@ -1,0 +1,1 @@
+"""Example bounded context."""

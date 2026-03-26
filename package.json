@@ -1,0 +1,28 @@
+{
+  "name": "estimaciones-inmuebles-be",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "husky",
+    "check:naming": "node scripts/naming-checker.mjs",
+    "lint:js": "eslint \"mcp-servers/**/*.js\"",
+    "format": "prettier --write \"**/*.{json,md,yml,yaml,cjs,mjs}\" --ignore-path .prettierignore",
+    "format:check": "prettier --check \"**/*.{json,md,yml,yaml,cjs,mjs}\" --ignore-path .prettierignore",
+    "mcp:postgresql:install": "npm install --prefix mcp-servers",
+    "mcp:postgresql:start": "npm run postgresql:start --prefix mcp-servers",
+    "mcp:postgresql:setup": "npm run postgresql:setup --prefix mcp-servers",
+    "mcp:postgresql:test": "npm run postgresql:test --prefix mcp-servers"
+  },
+  "lint-staged": {
+    "mcp-servers/**/*.js": "eslint --fix",
+    "*.{json,md,yml,yaml,cjs,mjs}": "prettier --write"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.16.0",
+    "eslint": "^9.16.0",
+    "globals": "^15.13.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "^3.4.2"
+  }
+}

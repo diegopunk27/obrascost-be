@@ -1,0 +1,13 @@
+.venv
+venv
+node_modules
+**/__pycache__
+**/*.pyc
+.ruff_cache
+.pytest_cache
+*.egg-info
+dist
+build
+coverage
+htmlcov
+package-lock.json

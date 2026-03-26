@@ -1,0 +1,19 @@
+{
+  "name": "mcp-servers",
+  "version": "1.0.0",
+  "description": "MCP servers for Cursor (PostgreSQL for this FastAPI project)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postgresql:start": "node postgresql/src/mcp-postgres-server.js",
+    "postgresql:setup": "node postgresql/scripts/setup.cjs",
+    "postgresql:test": "node postgresql/scripts/test.cjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.4.0",
+    "dotenv": "^16.4.5",
+    "pg": "^8.13.1"
+  },
+  "keywords": ["mcp", "postgresql", "cursor"],
+  "license": "MIT"
+}
