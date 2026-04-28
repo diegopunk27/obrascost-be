@@ -34,7 +34,7 @@ async def get_current_user(
         ) from exc
     payload = TokenPayload.model_validate(payload_dict)
     return UserSchema(
-        id=payload.sub,
+        id=int(payload.sub),
         email=payload.email,
         role_id=payload.role_id,
         role_name=payload.role_name,

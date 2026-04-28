@@ -14,7 +14,7 @@ class UserSchema(BaseModel):
 class TokenPayload(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    sub: int
+    sub: str
     email: str
     role_id: int = Field(validation_alias="roleId")
     role_name: str = Field(validation_alias="roleName")

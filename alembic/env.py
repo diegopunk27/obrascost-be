@@ -18,6 +18,10 @@ if str(_SRC) not in sys.path:
 
 from common.config.settings import get_settings  # noqa: E402
 from common.database.base import MasterModel  # noqa: E402, F401
+from modules.auth.models.usuario import Usuario  # noqa: E402, F401
+from modules.gastos.models.gasto import Gasto  # noqa: E402, F401
+from modules.obras.models.obra import Obra  # noqa: E402, F401
+from modules.rubros.models.rubro import Rubro  # noqa: E402, F401
 
 config = context.config
 
