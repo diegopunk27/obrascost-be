@@ -1,5 +1,5 @@
-from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.cqrs.query_bus import QueryBus
 from modules.obras.models.obra import Obra

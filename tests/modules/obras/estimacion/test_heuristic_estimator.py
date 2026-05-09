@@ -61,19 +61,21 @@ class TestCalcularEstimacion:
     @pytest.mark.parametrize(
         "superficie, provincia_id, costo_m2, expected_total",
         [
-            (50, 1, 30_000.0, 1_500_000.0),      # pequeño, BA
-            (200, 1, 30_000.0, 6_000_000.0),     # grande, BA
-            (100, 2, 30_000.0, 3_150_000.0),     # CABA 1.05
-            (100, 5, 30_000.0, 3_360_000.0),     # Chubut 1.12
-            (100, 9, 30_000.0, 2_550_000.0),     # Formosa 0.85
-            (0.1, 1, 100_000.0, 10_000.0),       # superficie mínima
+            (50, 1, 30_000.0, 1_500_000.0),  # pequeño, BA
+            (200, 1, 30_000.0, 6_000_000.0),  # grande, BA
+            (100, 2, 30_000.0, 3_150_000.0),  # CABA 1.05
+            (100, 5, 30_000.0, 3_360_000.0),  # Chubut 1.12
+            (100, 9, 30_000.0, 2_550_000.0),  # Formosa 0.85
+            (0.1, 1, 100_000.0, 10_000.0),  # superficie mínima
         ],
     )
     def test_parametrizado_superficie_y_provincia(
         self, superficie, provincia_id, costo_m2, expected_total
     ):
         rubros = [RubroInput(nombre="Test", costo_referencia_m2=costo_m2)]
-        result = calcular_estimacion(superficie_m2=superficie, provincia_id=provincia_id, rubros=rubros)
+        result = calcular_estimacion(
+            superficie_m2=superficie, provincia_id=provincia_id, rubros=rubros
+        )
         assert result.total_estimado == pytest.approx(expected_total, rel=1e-3)
 
     def test_margen_error_siempre_constante(self):

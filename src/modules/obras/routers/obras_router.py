@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, status
+from sqlmodel import select
 
 from common.auth.dependencies import get_current_user
 from common.auth.schemas import UserSchema
@@ -15,7 +16,6 @@ from modules.obras.queries.get_obra.get_obra_query import GetObraQuery
 from modules.obras.queries.list_obras.list_obras_query import ListObrasQuery
 from modules.obras.schemas import EstimacionResult, ObraCreate, ObraRead, ObraUpdate
 from modules.rubros.models.rubro import Rubro
-from sqlmodel import select
 
 router = APIRouter(prefix="/obras", tags=["Obras"], dependencies=[Depends(get_current_user)])
 
@@ -84,7 +84,10 @@ async def estimar_obra(
         GetObraQuery(id=obra_id, usuario_id=current_user.id), session=session
     )
     rubros_result = await session.exec(select(Rubro).where(Rubro.activo == True))  # noqa: E712
-    rubros = [RubroInput(nombre=r.nombre, costo_referencia_m2=r.costo_referencia_m2) for r in rubros_result.all()]
+    rubros = [
+        RubroInput(nombre=r.nombre, costo_referencia_m2=r.costo_referencia_m2)
+        for r in rubros_result.all()
+    ]
     estimacion = calcular_estimacion(
         superficie_m2=obra_read.superficie_m2,
         provincia_id=obra_read.provincia_id,

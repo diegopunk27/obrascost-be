@@ -4,7 +4,7 @@ import pytest
 import respx
 from httpx import Response
 
-from modules.obras.estimacion.ai_estimator_client import enriquecer_con_ia, _parse_json_block
+from modules.obras.estimacion.ai_estimator_client import _parse_json_block, enriquecer_con_ia
 from modules.obras.estimacion.heuristic_estimator import EstimacionHeuristica
 
 AI_URL = "http://localhost:8080/estimacion-obra"
@@ -91,6 +91,7 @@ class TestEnriquecerConIa:
     @pytest.mark.asyncio
     async def test_timeout_degrada_a_none(self, monkeypatch):
         import httpx
+
         respx.post(AI_URL).mock(side_effect=httpx.TimeoutException("timeout"))
 
         sugerencia, ajuste, alertas = await enriquecer_con_ia(

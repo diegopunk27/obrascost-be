@@ -1,6 +1,6 @@
 import bcrypt
-from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.auth.jwt_utils import create_access_token
 from common.cqrs.command_bus import CommandBus

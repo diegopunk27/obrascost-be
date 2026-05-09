@@ -1,5 +1,5 @@
-from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from common.cqrs.command_bus import CommandBus
 from common.exceptions.domain import ConflictError

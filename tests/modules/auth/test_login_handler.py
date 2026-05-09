@@ -5,7 +5,7 @@ import pytest
 
 from common.exceptions.domain import NotFoundError, UnprocessableDomainError
 from modules.auth.commands.login.login_command import LoginCommand
-from modules.auth.commands.login.login_handler import handle_login, _verify_password
+from modules.auth.commands.login.login_handler import _verify_password, handle_login
 from modules.auth.models.usuario import Usuario
 
 
@@ -14,7 +14,7 @@ def _hash(password: str) -> str:
 
 
 def _make_session(user: Usuario | None) -> AsyncMock:
-    """Returns an AsyncMock session whose execute() returns a result with .scalars().first() = user."""
+    """Returns AsyncMock session: execute() result has .scalars().first() == user."""
     scalars_mock = MagicMock()
     scalars_mock.first.return_value = user
     result_mock = MagicMock()
@@ -100,6 +100,7 @@ class TestHandleLogin:
     @pytest.mark.asyncio
     async def test_rol_admin_asigna_role_id_1(self):
         from jose import jwt
+
         from common.config.settings import get_settings
 
         user = Usuario(
@@ -121,6 +122,7 @@ class TestHandleLogin:
     @pytest.mark.asyncio
     async def test_rol_usuario_asigna_role_id_2(self):
         from jose import jwt
+
         from common.config.settings import get_settings
 
         user = Usuario(
@@ -142,6 +144,7 @@ class TestHandleLogin:
     @pytest.mark.asyncio
     async def test_sub_en_token_es_string(self):
         from jose import jwt
+
         from common.config.settings import get_settings
 
         user = Usuario(
@@ -153,7 +156,8 @@ class TestHandleLogin:
             activo=True,
         )
         session = _make_session(user)
-        result = await handle_login(LoginCommand(email="str@test.com", password="Admin1234!"), session)
+        cmd = LoginCommand(email="str@test.com", password="Admin1234!")
+        result = await handle_login(cmd, session)
 
         settings = get_settings()
         payload = jwt.decode(result.access_token, settings.jwt_secret, algorithms=["HS256"])

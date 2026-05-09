@@ -113,7 +113,9 @@ class TestCreateRubroHandler:
 
     @pytest.mark.asyncio
     async def test_rubro_duplicado_lanza_conflict(self):
-        existing = Rubro(id=1, nombre="Estructura", descripcion="", costo_referencia_m2=30000.0, activo=True)
+        existing = Rubro(
+            id=1, nombre="Estructura", descripcion="", costo_referencia_m2=30000.0, activo=True
+        )
         session = AsyncMock()
         session.exec.return_value = _exec_result([existing])
 
@@ -125,7 +127,9 @@ class TestCreateRubroHandler:
 class TestDeleteRubroHandler:
     @pytest.mark.asyncio
     async def test_borra_rubro_existente(self):
-        rubro = Rubro(id=3, nombre="Pintura", descripcion="", costo_referencia_m2=10000.0, activo=True)
+        rubro = Rubro(
+            id=3, nombre="Pintura", descripcion="", costo_referencia_m2=10000.0, activo=True
+        )
         session = AsyncMock()
         session.get.return_value = rubro
         session.delete = AsyncMock()

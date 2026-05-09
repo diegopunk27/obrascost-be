@@ -3,7 +3,7 @@ from dataclasses import dataclass
 # Factor regional multiplicador sobre el costo base de cada rubro.
 # Buenos Aires (prov. 1) es la referencia (1.0); norte/NEA más bajo; Patagonia más alto.
 _FACTOR_REGIONAL: dict[int, float] = {
-    1: 1.0,   # Buenos Aires
+    1: 1.0,  # Buenos Aires
     2: 1.05,  # CABA
     3: 0.90,  # Catamarca
     4: 0.88,  # Chaco
@@ -12,21 +12,21 @@ _FACTOR_REGIONAL: dict[int, float] = {
     7: 0.87,  # Corrientes
     8: 1.15,  # Entre Ríos
     9: 0.85,  # Formosa
-    10: 0.92, # Jujuy
-    11: 0.93, # La Pampa
-    12: 0.91, # La Rioja
-    13: 0.96, # Mendoza
-    14: 0.86, # Misiones
-    15: 1.10, # Neuquén
-    16: 1.18, # Río Negro
-    17: 0.89, # Salta
-    18: 0.94, # San Juan
-    19: 0.93, # San Luis
-    20: 1.20, # Santa Cruz
-    21: 0.98, # Santa Fe
-    22: 0.90, # Santiago del Estero
-    23: 1.25, # Tierra del Fuego
-    24: 0.91, # Tucumán
+    10: 0.92,  # Jujuy
+    11: 0.93,  # La Pampa
+    12: 0.91,  # La Rioja
+    13: 0.96,  # Mendoza
+    14: 0.86,  # Misiones
+    15: 1.10,  # Neuquén
+    16: 1.18,  # Río Negro
+    17: 0.89,  # Salta
+    18: 0.94,  # San Juan
+    19: 0.93,  # San Luis
+    20: 1.20,  # Santa Cruz
+    21: 0.98,  # Santa Fe
+    22: 0.90,  # Santiago del Estero
+    23: 1.25,  # Tierra del Fuego
+    24: 0.91,  # Tucumán
 }
 
 DEFAULT_FACTOR = 1.0
