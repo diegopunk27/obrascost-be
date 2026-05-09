@@ -3,11 +3,12 @@ services:
     name: obrascost-be
     runtime: python
     plan: free
-    pythonVersion: "3.12"
     buildCommand: pip install -e .
     startCommand: ./start.sh
     healthCheckPath: /health
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"
       - key: TESTING
         value: "false"
       - key: PYTHONPATH
