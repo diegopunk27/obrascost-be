@@ -50,6 +50,7 @@ async def _lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     command_bus = CommandBus()
     query_bus = QueryBus()
+    settings = get_settings()
 
     app = FastAPI(
         title="ObrasCost API",
@@ -61,7 +62,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://localhost:3000"],
+        allow_origins=settings.cors_origins_list,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

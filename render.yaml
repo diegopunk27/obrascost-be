@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: obrascost-be
+    runtime: python
+    plan: free
+    pythonVersion: "3.12"
+    buildCommand: pip install -e .
+    startCommand: ./start.sh
+    healthCheckPath: /health
+    envVars:
+      - key: TESTING
+        value: "false"
+      - key: PYTHONPATH
+        value: src
+      # Set these manually in the Render dashboard:
+      # - DATABASE_URL          (from Neon, full DSN with sslmode=require)
+      # - JWT_SECRET            (random 32+ char string)
+      # - CORS_ORIGINS          (https://your-netlify-site.netlify.app)
+      # - AI_API_BASE_URL       (https://obrascost-ai-api.onrender.com)
