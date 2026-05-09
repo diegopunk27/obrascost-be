@@ -1,129 +1,172 @@
-# FastAPI CQRS Base (Python)
+# ObrasCost — Backend
 
-Boilerplate equivalent to the NestJS CQRS base template: **CQRS buses**, **modular routers**, **JWT auth + permissions**, **global exception handling**, **async PostgreSQL** (SQLModel + asyncpg), **Alembic** migrations, and **pytest + httpx** E2E tests.
+API REST de **ObrasCost**, plataforma de gestión y estimación de costos de obras de construcción. Desarrollada con FastAPI + CQRS + PostgreSQL asíncrono.
 
 ## Stack
 
-| Concern        | Technology                          |
-|----------------|-------------------------------------|
-| API            | FastAPI                             |
-| CQRS           | `CommandBus` / `QueryBus` + registry |
-| ORM            | SQLModel (SQLAlchemy 2 async)       |
-| DB driver      | asyncpg                             |
-| Migrations     | Alembic (async env)                 |
-| Config         | pydantic-settings (`.env`)          |
-| JWT            | python-jose                         |
-| Logging        | loguru                              |
-| Tests          | pytest, pytest-asyncio, httpx       |
+| Concern | Tecnología |
+|---|---|
+| API | FastAPI |
+| Patrón | CQRS (CommandBus / QueryBus) |
+| ORM | SQLModel (SQLAlchemy 2 async) |
+| DB driver | asyncpg |
+| DB | PostgreSQL 16 |
+| Migraciones | Alembic (async) |
+| Config | pydantic-settings (`.env`) |
+| Auth | JWT (python-jose) + bcrypt |
+| HTTP cliente | httpx (llamadas a api-multiagente) |
+| Logging | loguru |
+| Tests | pytest + pytest-asyncio |
+| Linting | Ruff (check + format) |
 
-## Quick start
+## Inicio rápido
+
+### 1. Levantar la base de datos (Docker)
+
+```bash
+docker compose -f docker-compose.db.yml up -d
+```
+
+Esto inicia solo PostgreSQL en `localhost:5432`. La app corre desde el host.
+
+### 2. Instalar dependencias
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 cp .env.example .env
-# Edit .env — set DB_* and JWT_SECRET
+# Editar .env — ajustar DB_* y JWT_SECRET si es necesario
+```
 
-# PostgreSQL (Docker)
-docker compose -f docker-compose.dev.yml up -d postgres
+### 3. Migraciones + seed
 
-# Migrations (from project root; loads .env via pydantic-settings)
+```bash
 export PYTHONPATH=src
 alembic upgrade head
+python scripts/seed_dev.py   # 1 usuario admin + 10 rubros estándar
+```
 
-# Run API
+### 4. Ejecutar la API
+
+```bash
 uvicorn main:app --reload --app-dir src --port 4000
 ```
 
-- OpenAPI: `http://localhost:4000/docs`
+- Swagger: `http://localhost:4000/docs`
 - Health: `GET /health`
-- Example command: `POST /example/hello` with JSON `{"name": "TestName"}` → `201` and `"Hola TestName!!"`
 
-## Tests
+### Credenciales del seed
 
-Tests set `TESTING=true` (see `tests/conftest.py`) so the app **does not** open a DB connection — enough for the example CQRS flow.
+| Campo | Valor |
+|---|---|
+| Email | `admin@obrascost.com` |
+| Contraseña | `admin123` |
+
+## Módulos de dominio
+
+| Módulo | Entidades | Endpoints |
+|---|---|---|
+| `auth/` | Usuario (email, password_hash, nombre, role) | `POST /auth/login`, `GET /auth/me` |
+| `rubros/` | Rubro (nombre, descripcion, costo_referencia_m2) | CRUD `/rubros` |
+| `obras/` | Obra (superficie_m2, provincia_id, presupuesto_inicial, estado) | CRUD `/obras` + `POST /obras/{id}/estimacion` |
+| `gastos/` | Gasto (obra_id, rubro_id, monto, fecha) | CRUD `/obras/{id}/gastos` |
+
+### Endpoint de estimación
+
+```
+POST /obras/{id}/estimacion?con_ia=false   # heurística pura
+POST /obras/{id}/estimacion?con_ia=true    # heurística + análisis LLM
+```
+
+**Respuesta:**
+```json
+{
+  "total_estimado": 3000000,
+  "desglose_por_rubro": { "Estructura": 2000000, "Pintura": 500000 },
+  "margen_error_pct": 15,
+  "fuente": "ia",
+  "sugerencia_ia": "Considerar aumento en terminaciones.",
+  "ajuste_recomendado_pct": 5,
+  "alertas": []
+}
+```
+
+## Testing
+
+### Unitarios
 
 ```bash
 export PYTHONPATH=src
 pytest tests/ -v
 ```
 
-For integration tests against a real DB, unset `TESTING`, point `DB_*` to `app_testing`, and run migrations against that database.
+**Cobertura:** ≥ 83% global (76 tests). El flag `TESTING=true` desactiva la conexión real a BD — apropiado para tests unitarios de handlers CQRS.
 
-## Project layout
+```bash
+pytest --cov=src --cov-report=html --cov-fail-under=80
+# Reporte HTML en htmlcov/
+```
+
+### Qué se testea
+
+| Módulo | Tests |
+|---|---|
+| `auth/` | Login command, validaciones, JWT |
+| `rubros/` | CRUD commands y queries |
+| `obras/` | CRUD commands y queries |
+| `gastos/` | CRUD commands y queries |
+| `estimacion/` | `heuristic_estimator` con pytest.parametrize (superficies edge, rubros vacíos, factores regionales); `ai_estimator_client` con respx (timeouts, 500, JSON inválido) |
+
+## CI/CD (GitHub Actions)
+
+Workflow: [`.github/workflows/be-ci.yml`](.github/workflows/be-ci.yml)
+
+| Job | Qué hace |
+|---|---|
+| `lint` | `ruff check src tests` + `ruff format --check` |
+| `test` | `pytest --cov=src --cov-fail-under=80` — sube artefacto `coverage-be` |
+
+**Triggers:** push y PR a `main` / `development`.
+
+## Estructura del proyecto
 
 ```
 src/
-  app.py              # create_app(), lifespan, buses on app.state
-  main.py             # ASGI entry (uvicorn main:app --app-dir src)
-  common/             # CQRS, config, DB, auth, exceptions, logging
-  modules/            # Feature modules: commands/, queries/, routers/
-alembic/              # migrations (async)
-tests/                # E2E-style tests with httpx.AsyncClient
+  app.py                  create_app(), lifespan, buses en app.state
+  main.py                 Entry point ASGI
+  common/                 CQRS, config, DB, auth, excepciones, logging
+  modules/
+    auth/                 Login + JWT + usuario actual
+    rubros/               Catálogo de rubros de construcción
+    obras/
+      estimacion/         heuristic_estimator.py + ai_estimator_client.py
+    gastos/
+alembic/                  Migraciones async
+scripts/
+  seed_dev.py             Datos iniciales (admin + 10 rubros)
+tests/
+  modules/                Tests unitarios por módulo
 ```
 
-### CQRS
+## Migraciones
 
-- **Commands / queries**: Pydantic models under `modules/<feature>/commands|queries/`.
-- **Handlers**: async functions registered with `@CommandBus.register(MyCommand)` or `@QueryBus.register(MyQuery)`.
-- **Routers**: inject `CommandBus` / `QueryBus` via `Depends(get_command_bus)` / `Depends(get_query_bus)`, then `await bus.execute(dto, db=session)` when the handler needs `AsyncSession` (kwargs are forwarded by parameter name).
+| Revisión | Descripción |
+|---|---|
+| `0001` | Tablas base (provincias, ejemplos) |
+| `0002` | usuarios + rubros |
+| `0003` | obras (FK usuarios, provincias) |
+| `0004` | gastos (FK obras, rubros) |
 
-### Auth
+## Variables de entorno
 
-- `get_current_user` — Bearer JWT (HTTP Bearer).
-- `require_permissions("A", "B")` — use as `Depends(require_permissions("A"))` on routes.
-- Tests: `app.dependency_overrides[get_current_user] = lambda: mock_user` (same idea as Nest `TestMockGuard`).
-
-### Transactions
-
-- `UnitOfWork` in `common/database/unit_of_work.py` — `async with uow.begin() as session:` or `await uow.with_transaction(handler)`.
-
-## Docker
-
-```bash
-docker compose -f docker-compose.dev.yml up --build
-```
-
-Production compose builds `Dockerfile.prod` (adjust env / orchestration as needed).
-
-## Tooling (Prettier, ESLint, Husky, naming)
-
-El template Nest usa **Prettier + ESLint + Husky** en TypeScript. En este repo:
-
-| Nest / JS        | Aquí |
-|------------------|------|
-| Prettier (TS/JSON/MD) | **Prettier** para `*.{json,md,yml,yaml,cjs,mjs}`; **Ruff format** para `*.py` (ver `pyproject.toml`) |
-| ESLint (`src/` TS)    | **Ruff** lint en `src/` y `tests/`; **ESLint 9** solo en `mcp-servers/**/*.js` (`eslint.config.mjs`) |
-| `.eslintrc.js`        | Stub en raíz que ignora todo: el lint real de JS es el flat config (evita que herramientas legacy escaneen Python) |
-| `naming-checker.mjs`  | `scripts/naming-checker.mjs` — **snake_case** en `src/` y `tests/` (PEP 8); ver `naming-policies.md` |
-| Husky                 | `.husky/pre-commit`: naming + `ruff check/format` (si existe `.venv`) + `lint-staged` |
-
-Setup una vez (requiere **Node.js** + npm):
-
-```bash
-npm install          # instala husky, prettier, eslint, lint-staged; ejecuta prepare → husky
-npm run mcp:postgresql:install   # dependencias del MCP PostgreSQL
-```
-
-## MCP PostgreSQL (Cursor)
-
-Servidor MCP bajo `mcp-servers/postgresql/`, usando las mismas variables `DB_*` que la app.
-
-```bash
-npm run mcp:postgresql:install
-cp .cursor/mcp.example.json .cursor/mcp.json   # editar credenciales
-npm run mcp:postgresql:test
-```
-
-Detalle: [mcp-servers/postgresql/docs/README.md](mcp-servers/postgresql/docs/README.md).
-
-## Differences vs NestJS template
-
-- **Validation**: Pydantic returns **422** for body validation (Nest `ValidationPipe` often surfaced as 400).
-- **MySQL → PostgreSQL** and **async** driver throughout.
-- **No Nest DI**: pass `db=session` (and other deps) explicitly into `bus.execute` when handlers need them.
-
-## Documentation for agents
-
-See [AGENTS.md](AGENTS.md) and [skills/](skills/) for conventions and skill parity with the NestJS template.
+| Variable | Default | Descripción |
+|---|---|---|
+| `DB_HOST` | `localhost` | Host PostgreSQL |
+| `DB_PORT` | `5432` | Puerto |
+| `DB_USERNAME` | `postgres` | Usuario |
+| `DB_PASSWORD` | `postgres` | Contraseña |
+| `DB_DATABASE` | `app_dev` | Nombre de la BD |
+| `JWT_SECRET` | — | Clave secreta para firmar tokens |
+| `AI_API_BASE_URL` | `http://localhost:8080` | URL del api-multiagente |
+| `TESTING` | `false` | `true` desactiva la conexión real a BD |
