@@ -19,8 +19,7 @@ _ALERTA_TIMEOUT = (
     "Mostramos la estimación heurística."
 )
 _ALERTA_FALLBACK = (
-    "El análisis con IA no está disponible en este momento. "
-    "Mostramos la estimación heurística."
+    "El análisis con IA no está disponible en este momento. Mostramos la estimación heurística."
 )
 
 
