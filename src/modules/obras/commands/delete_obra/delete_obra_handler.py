@@ -13,10 +13,5 @@ async def handle_delete_obra(command: DeleteObraCommand, session: AsyncSession) 
         raise NotFoundError(f"Obra {command.id} no encontrada")
     if obra.usuario_id != command.usuario_id:
         raise UnprocessableDomainError("No tenés permiso para eliminar esta obra")
-    if obra.estado != "borrador":
-        raise UnprocessableDomainError(
-            f"No se puede eliminar una obra en estado '{obra.estado}'. "
-            "Solo se pueden eliminar obras en estado 'borrador'."
-        )
     await session.delete(obra)
     await session.commit()

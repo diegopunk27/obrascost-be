@@ -114,25 +114,24 @@ async def test_validacion_superficie_negativa_devuelve_422(
 
 
 @pytest.mark.asyncio
-async def test_eliminar_obra_no_borrador_devuelve_422(
+async def test_eliminar_obra_en_cualquier_estado_devuelve_204(
     client: AsyncClient, auth_headers: dict[str, str]
 ) -> None:
+    """La protección contra borrado accidental ocurre en el FE (input de
+    confirmación tipo AWS). El handler permite borrar en cualquier estado."""
     create_resp = await client.post("/obras", json=_payload_obra(), headers=auth_headers)
     obra_id = create_resp.json()["id"]
 
-    # Mover a en_progreso (transición válida desde borrador)
     upd = await client.patch(
         f"/obras/{obra_id}", json={"estado": "en_progreso"}, headers=auth_headers
     )
     assert upd.status_code == 200
 
-    # Intentar borrar → 422 porque ya no está en borrador
     delete_resp = await client.delete(f"/obras/{obra_id}", headers=auth_headers)
-    assert delete_resp.status_code == 422
+    assert delete_resp.status_code == 204
 
-    # La obra sigue existiendo
     get_resp = await client.get(f"/obras/{obra_id}", headers=auth_headers)
-    assert get_resp.status_code == 200
+    assert get_resp.status_code == 404
 
 
 @pytest.mark.asyncio

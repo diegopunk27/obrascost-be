@@ -148,17 +148,19 @@ class TestDeleteObraHandler:
             await handle_delete_obra(DeleteObraCommand(id=999, usuario_id=1), session)
 
     @pytest.mark.asyncio
-    async def test_borrar_obra_no_borrador_lanza_unprocessable(self):
+    async def test_borrar_obra_en_cualquier_estado_funciona(self):
+        # La protección contra borrado accidental ocurre en el FE (input de
+        # confirmación tipo AWS). El handler permite borrar en cualquier estado
+        # siempre que el usuario sea dueño.
         obra = _make_obra(id=7, usuario_id=3, estado="en_progreso")
         session = AsyncMock()
         session.get.return_value = obra
         session.delete = AsyncMock()
 
-        with pytest.raises(UnprocessableDomainError):
-            await handle_delete_obra(DeleteObraCommand(id=7, usuario_id=3), session)
+        await handle_delete_obra(DeleteObraCommand(id=7, usuario_id=3), session)
 
-        session.delete.assert_not_called()
-        session.commit.assert_not_called()
+        session.delete.assert_awaited_once_with(obra)
+        session.commit.assert_awaited_once()
 
 
 class TestUpdateObraHandler:
