@@ -1,8 +1,13 @@
+import asyncio
+import logging
+
+import httpx
 from fastapi import APIRouter, Depends, status
 from sqlmodel import select
 
 from common.auth.dependencies import get_current_user
 from common.auth.schemas import UserSchema
+from common.config.settings import get_settings
 from common.cqrs.command_bus import CommandBus
 from common.cqrs.deps import get_command_bus, get_query_bus
 from common.cqrs.query_bus import QueryBus
@@ -17,7 +22,42 @@ from modules.obras.queries.list_obras.list_obras_query import ListObrasQuery
 from modules.obras.schemas import EstimacionResult, ObraCreate, ObraRead, ObraUpdate
 from modules.rubros.models.rubro import Rubro
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/obras", tags=["Obras"], dependencies=[Depends(get_current_user)])
+
+_WARMUP_PAYLOAD = {
+    "nombre_obra": "warmup",
+    "superficie_m2": 1.0,
+    "provincia_id": None,
+    "estimacion_heuristica": {
+        "total_estimado": 1.0,
+        "desglose_por_rubro": {"x": 1.0},
+        "margen_error_pct": 0.0,
+    },
+}
+
+
+async def _ping_multiagente() -> None:
+    settings = get_settings()
+    url = f"{settings.ai_api_base_url}/estimacion-obra"
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
+            response = await client.post(url, json=_WARMUP_PAYLOAD)
+            logger.info("warmup_ia: ping respondió %s", response.status_code)
+    except Exception as exc:
+        logger.info("warmup_ia: ping no respondió (esperable si dormido): %s", exc)
+
+
+@router.post("/warmup-ia", status_code=status.HTTP_202_ACCEPTED)
+async def warmup_ia(_user: UserSchema = Depends(get_current_user)) -> dict[str, str]:
+    """Dispara fire-and-forget un ping al multi-agente para despertarlo del cold start.
+
+    Retorna 202 Accepted al instante. El FE lo invoca cuando el usuario abre el tab
+    'Estimación' para que cuando haga click en 'Estimar con IA' el servicio ya esté caliente.
+    """
+    asyncio.create_task(_ping_multiagente())
+    return {"status": "warming"}
 
 
 @router.get("", response_model=list[ObraRead])
