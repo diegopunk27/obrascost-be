@@ -8,7 +8,12 @@ from modules.obras.estimacion.heuristic_estimator import EstimacionHeuristica
 
 logger = logging.getLogger(__name__)
 
-_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+_TIMEOUT = httpx.Timeout(65.0, connect=10.0)
+
+_ALERTA_TIMEOUT = (
+    "El servicio de análisis IA tardó demasiado (posible arranque en frío). "
+    "Se muestra solo la estimación heurística."
+)
 
 
 async def enriquecer_con_ia(
@@ -44,6 +49,9 @@ async def enriquecer_con_ia(
             ajuste = data.get("ajuste_recomendado_pct")
             alertas = data.get("alertas", [])
             return str(sugerencia) if sugerencia else None, ajuste, alertas
+    except httpx.TimeoutException as exc:
+        logger.warning("ai_estimator_client timeout (%ss): %s", _TIMEOUT.read, exc)
+        return None, None, [_ALERTA_TIMEOUT]
     except Exception as exc:
         logger.warning("ai_estimator_client falló, usando solo heurística: %s", exc)
         return None, None, []
