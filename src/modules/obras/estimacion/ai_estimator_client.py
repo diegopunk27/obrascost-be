@@ -11,8 +11,12 @@ logger = logging.getLogger(__name__)
 _TIMEOUT = httpx.Timeout(65.0, connect=10.0)
 
 _ALERTA_TIMEOUT = (
-    "El servicio de análisis IA tardó demasiado (posible arranque en frío). "
-    "Se muestra solo la estimación heurística."
+    "El análisis con IA tardó demasiado (posible arranque en frío del servidor). "
+    "Mostramos la estimación heurística."
+)
+_ALERTA_FALLBACK = (
+    "El análisis con IA no está disponible en este momento. "
+    "Mostramos la estimación heurística."
 )
 
 
@@ -53,8 +57,13 @@ async def enriquecer_con_ia(
         logger.warning("ai_estimator_client timeout (%ss): %s", _TIMEOUT.read, exc)
         return None, None, [_ALERTA_TIMEOUT]
     except Exception as exc:
-        logger.warning("ai_estimator_client falló, usando solo heurística: %s", exc)
-        return None, None, []
+        logger.warning(
+            "ai_estimator_client falló contra %s — %s: %s",
+            settings.ai_api_base_url,
+            type(exc).__name__,
+            exc,
+        )
+        return None, None, [_ALERTA_FALLBACK]
 
 
 def _parse_json_block(text: str) -> dict:

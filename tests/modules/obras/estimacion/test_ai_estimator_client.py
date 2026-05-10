@@ -73,7 +73,7 @@ class TestEnriquecerConIa:
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_error_500_degrada_a_none(self):
+    async def test_error_500_degrada_con_alerta(self):
         respx.post(AI_URL).mock(return_value=Response(500, text="Internal Server Error"))
 
         sugerencia, ajuste, alertas = await enriquecer_con_ia(
@@ -85,7 +85,8 @@ class TestEnriquecerConIa:
 
         assert sugerencia is None
         assert ajuste is None
-        assert alertas == []
+        assert len(alertas) == 1
+        assert "no está disponible" in alertas[0]
 
     @respx.mock
     @pytest.mark.asyncio
@@ -105,10 +106,11 @@ class TestEnriquecerConIa:
         assert ajuste is None
         assert len(alertas) == 1
         assert "tardó demasiado" in alertas[0]
+        assert "arranque en frío" in alertas[0]
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_json_invalido_degrada_a_none(self):
+    async def test_json_invalido_degrada_con_alerta(self):
         respx.post(AI_URL).mock(return_value=Response(200, text="not json at all"))
 
         sugerencia, ajuste, alertas = await enriquecer_con_ia(
@@ -120,7 +122,8 @@ class TestEnriquecerConIa:
 
         assert sugerencia is None
         assert ajuste is None
-        assert alertas == []
+        assert len(alertas) == 1
+        assert "no está disponible" in alertas[0]
 
     @respx.mock
     @pytest.mark.asyncio
