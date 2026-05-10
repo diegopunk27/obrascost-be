@@ -73,6 +73,67 @@ class TestEnriquecerConIa:
 
     @respx.mock
     @pytest.mark.asyncio
+    async def test_502_reintenta_y_eventualmente_succeed(self, monkeypatch):
+        # Acelera los sleeps del retry para que el test sea rápido
+        import modules.obras.estimacion.ai_estimator_client as mod
+
+        async def _fast_sleep(_seconds):
+            return None
+
+        monkeypatch.setattr(mod.asyncio, "sleep", _fast_sleep)
+
+        success_payload = {
+            "sugerencia_narrativa": "OK tras retry",
+            "ajuste_recomendado_pct": 3.0,
+            "alertas": [],
+        }
+        route = respx.post(AI_URL).mock(
+            side_effect=[
+                Response(502, text="Bad Gateway"),
+                Response(503, text="Service Unavailable"),
+                Response(200, json=success_payload),
+            ]
+        )
+
+        sugerencia, ajuste, alertas = await enriquecer_con_ia(
+            nombre_obra="Casa Test",
+            superficie_m2=100,
+            provincia_id=1,
+            estimacion_base=BASE_ESTIMACION,
+        )
+
+        assert route.call_count == 3
+        assert sugerencia == "OK tras retry"
+        assert ajuste == 3.0
+        assert alertas == []
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_502_persistente_degrada_con_alerta(self, monkeypatch):
+        import modules.obras.estimacion.ai_estimator_client as mod
+
+        async def _fast_sleep(_seconds):
+            return None
+
+        monkeypatch.setattr(mod.asyncio, "sleep", _fast_sleep)
+
+        route = respx.post(AI_URL).mock(return_value=Response(502, text="Bad Gateway"))
+
+        sugerencia, ajuste, alertas = await enriquecer_con_ia(
+            nombre_obra="Casa Test",
+            superficie_m2=100,
+            provincia_id=1,
+            estimacion_base=BASE_ESTIMACION,
+        )
+
+        assert route.call_count == 3
+        assert sugerencia is None
+        assert ajuste is None
+        assert len(alertas) == 1
+        assert "no está disponible" in alertas[0]
+
+    @respx.mock
+    @pytest.mark.asyncio
     async def test_error_500_degrada_con_alerta(self):
         respx.post(AI_URL).mock(return_value=Response(500, text="Internal Server Error"))
 

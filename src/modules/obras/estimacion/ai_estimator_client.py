@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 
@@ -9,6 +10,9 @@ from modules.obras.estimacion.heuristic_estimator import EstimacionHeuristica
 logger = logging.getLogger(__name__)
 
 _TIMEOUT = httpx.Timeout(65.0, connect=10.0)
+_RETRY_STATUS = {502, 503, 504}
+_MAX_ATTEMPTS = 3
+_RETRY_DELAYS_SECONDS = (5, 15)
 
 _ALERTA_TIMEOUT = (
     "El análisis con IA tardó demasiado (posible arranque en frío del servidor). "
@@ -20,6 +24,28 @@ _ALERTA_FALLBACK = (
 )
 
 
+async def _post_con_retry(client: httpx.AsyncClient, url: str, payload: dict) -> httpx.Response:
+    """POST con reintentos para 502/503/504 (típicos del cold start de Render free tier)."""
+    last_response: httpx.Response | None = None
+    for attempt in range(_MAX_ATTEMPTS):
+        response = await client.post(url, json=payload)
+        if response.status_code not in _RETRY_STATUS:
+            return response
+        last_response = response
+        if attempt < _MAX_ATTEMPTS - 1:
+            delay = _RETRY_DELAYS_SECONDS[attempt]
+            logger.info(
+                "ai_estimator_client recibió %s, reintentando en %ss (intento %s/%s)",
+                response.status_code,
+                delay,
+                attempt + 2,
+                _MAX_ATTEMPTS,
+            )
+            await asyncio.sleep(delay)
+    assert last_response is not None
+    return last_response
+
+
 async def enriquecer_con_ia(
     nombre_obra: str,
     superficie_m2: float,
@@ -28,7 +54,7 @@ async def enriquecer_con_ia(
 ) -> tuple[str | None, float | None, list[str]]:
     """Llama a api-multiagente y retorna (sugerencia, ajuste_pct, alertas).
 
-    Siempre retorna sin lanzar excepción — degrada gracefully a (None, None, []).
+    Siempre retorna sin lanzar excepción — degrada gracefully con una alerta visible.
     """
     settings = get_settings()
     payload = {
@@ -43,9 +69,8 @@ async def enriquecer_con_ia(
     }
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            response = await client.post(
-                f"{settings.ai_api_base_url}/estimacion-obra",
-                json=payload,
+            response = await _post_con_retry(
+                client, f"{settings.ai_api_base_url}/estimacion-obra", payload
             )
             response.raise_for_status()
             data = response.json()
