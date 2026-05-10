@@ -9,10 +9,12 @@ from modules.obras.estimacion.heuristic_estimator import EstimacionHeuristica
 
 logger = logging.getLogger(__name__)
 
-_TIMEOUT = httpx.Timeout(65.0, connect=10.0)
+_TIMEOUT = httpx.Timeout(90.0, connect=10.0)
 _RETRY_STATUS = {502, 503, 504}
-_MAX_ATTEMPTS = 3
-_RETRY_DELAYS_SECONDS = (5, 15)
+_MAX_ATTEMPTS = 4
+# Delays acumulados: 0s + 5s + 15s + 25s = 45s antes del último intento.
+# Cubre el spin-up típico de Render free tier (30-50s).
+_RETRY_DELAYS_SECONDS = (5, 15, 25)
 
 _ALERTA_TIMEOUT = (
     "El análisis con IA tardó demasiado (posible arranque en frío del servidor). "

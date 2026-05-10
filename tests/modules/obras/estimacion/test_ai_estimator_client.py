@@ -91,6 +91,7 @@ class TestEnriquecerConIa:
             side_effect=[
                 Response(502, text="Bad Gateway"),
                 Response(503, text="Service Unavailable"),
+                Response(502, text="Bad Gateway"),
                 Response(200, json=success_payload),
             ]
         )
@@ -102,7 +103,7 @@ class TestEnriquecerConIa:
             estimacion_base=BASE_ESTIMACION,
         )
 
-        assert route.call_count == 3
+        assert route.call_count == 4
         assert sugerencia == "OK tras retry"
         assert ajuste == 3.0
         assert alertas == []
@@ -126,7 +127,7 @@ class TestEnriquecerConIa:
             estimacion_base=BASE_ESTIMACION,
         )
 
-        assert route.call_count == 3
+        assert route.call_count == 4
         assert sugerencia is None
         assert ajuste is None
         assert len(alertas) == 1

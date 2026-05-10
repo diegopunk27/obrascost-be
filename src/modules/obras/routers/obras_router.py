@@ -1,8 +1,8 @@
-import asyncio
 import logging
+import time
 
 import httpx
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 from sqlmodel import select
 
 from common.auth.dependencies import get_current_user
@@ -41,22 +41,30 @@ _WARMUP_PAYLOAD = {
 async def _ping_multiagente() -> None:
     settings = get_settings()
     url = f"{settings.ai_api_base_url}/estimacion-obra"
+    logger.warning("warmup_ia: iniciando ping a %s", url)
+    started = time.monotonic()
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(90.0, connect=10.0)) as client:
             response = await client.post(url, json=_WARMUP_PAYLOAD)
-            logger.info("warmup_ia: ping respondió %s", response.status_code)
+            elapsed = time.monotonic() - started
+            logger.warning("warmup_ia: ping respondió %s en %.1fs", response.status_code, elapsed)
     except Exception as exc:
-        logger.info("warmup_ia: ping no respondió (esperable si dormido): %s", exc)
+        elapsed = time.monotonic() - started
+        logger.warning("warmup_ia: ping falló tras %.1fs: %s", elapsed, exc)
 
 
 @router.post("/warmup-ia", status_code=status.HTTP_202_ACCEPTED)
-async def warmup_ia(_user: UserSchema = Depends(get_current_user)) -> dict[str, str]:
-    """Dispara fire-and-forget un ping al multi-agente para despertarlo del cold start.
+async def warmup_ia(
+    background_tasks: BackgroundTasks,
+    _user: UserSchema = Depends(get_current_user),
+) -> dict[str, str]:
+    """Encola un ping al multi-agente para despertarlo del cold start.
 
-    Retorna 202 Accepted al instante. El FE lo invoca cuando el usuario abre el tab
-    'Estimación' para que cuando haga click en 'Estimar con IA' el servicio ya esté caliente.
+    Retorna 202 Accepted al instante. FastAPI BackgroundTasks garantiza que la
+    tarea se ejecute después de enviar la respuesta (a diferencia de
+    asyncio.create_task, que puede cancelarse al cerrar el request scope).
     """
-    asyncio.create_task(_ping_multiagente())
+    background_tasks.add_task(_ping_multiagente)
     return {"status": "warming"}
 
 
