@@ -1,13 +1,8 @@
-import logging
-import time
-
-import httpx
-from fastapi import APIRouter, BackgroundTasks, Depends, status
+from fastapi import APIRouter, Depends, status
 from sqlmodel import select
 
 from common.auth.dependencies import get_current_user
 from common.auth.schemas import UserSchema
-from common.config.settings import get_settings
 from common.cqrs.command_bus import CommandBus
 from common.cqrs.deps import get_command_bus, get_query_bus
 from common.cqrs.query_bus import QueryBus
@@ -22,50 +17,7 @@ from modules.obras.queries.list_obras.list_obras_query import ListObrasQuery
 from modules.obras.schemas import EstimacionResult, ObraCreate, ObraRead, ObraUpdate
 from modules.rubros.models.rubro import Rubro
 
-logger = logging.getLogger(__name__)
-
 router = APIRouter(prefix="/obras", tags=["Obras"], dependencies=[Depends(get_current_user)])
-
-_WARMUP_PAYLOAD = {
-    "nombre_obra": "warmup",
-    "superficie_m2": 1.0,
-    "provincia_id": None,
-    "estimacion_heuristica": {
-        "total_estimado": 1.0,
-        "desglose_por_rubro": {"x": 1.0},
-        "margen_error_pct": 0.0,
-    },
-}
-
-
-async def _ping_multiagente() -> None:
-    settings = get_settings()
-    url = f"{settings.ai_api_base_url}/estimacion-obra"
-    logger.warning("warmup_ia: iniciando ping a %s", url)
-    started = time.monotonic()
-    try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(90.0, connect=10.0)) as client:
-            response = await client.post(url, json=_WARMUP_PAYLOAD)
-            elapsed = time.monotonic() - started
-            logger.warning("warmup_ia: ping respondió %s en %.1fs", response.status_code, elapsed)
-    except Exception as exc:
-        elapsed = time.monotonic() - started
-        logger.warning("warmup_ia: ping falló tras %.1fs: %s", elapsed, exc)
-
-
-@router.post("/warmup-ia", status_code=status.HTTP_202_ACCEPTED)
-async def warmup_ia(
-    background_tasks: BackgroundTasks,
-    _user: UserSchema = Depends(get_current_user),
-) -> dict[str, str]:
-    """Encola un ping al multi-agente para despertarlo del cold start.
-
-    Retorna 202 Accepted al instante. FastAPI BackgroundTasks garantiza que la
-    tarea se ejecute después de enviar la respuesta (a diferencia de
-    asyncio.create_task, que puede cancelarse al cerrar el request scope).
-    """
-    background_tasks.add_task(_ping_multiagente)
-    return {"status": "warming"}
 
 
 @router.get("", response_model=list[ObraRead])
