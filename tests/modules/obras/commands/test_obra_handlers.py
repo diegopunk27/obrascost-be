@@ -147,6 +147,19 @@ class TestDeleteObraHandler:
         with pytest.raises(NotFoundError):
             await handle_delete_obra(DeleteObraCommand(id=999, usuario_id=1), session)
 
+    @pytest.mark.asyncio
+    async def test_borrar_obra_no_borrador_lanza_unprocessable(self):
+        obra = _make_obra(id=7, usuario_id=3, estado="en_progreso")
+        session = AsyncMock()
+        session.get.return_value = obra
+        session.delete = AsyncMock()
+
+        with pytest.raises(UnprocessableDomainError):
+            await handle_delete_obra(DeleteObraCommand(id=7, usuario_id=3), session)
+
+        session.delete.assert_not_called()
+        session.commit.assert_not_called()
+
 
 class TestUpdateObraHandler:
     @pytest.mark.asyncio
@@ -180,3 +193,29 @@ class TestUpdateObraHandler:
         cmd = UpdateObraCommand(id=10, estado="estado_raro")
         with pytest.raises(UnprocessableDomainError):
             await handle_update_obra(cmd, session)
+
+    @pytest.mark.asyncio
+    async def test_transicion_estado_invalida_lanza_unprocessable(self):
+        # borrador → finalizada NO es una transición permitida
+        obra = _make_obra(id=11, usuario_id=2, estado="borrador")
+        session = AsyncMock()
+        session.get.return_value = obra
+        session.add = MagicMock()
+
+        cmd = UpdateObraCommand(id=11, estado="finalizada")
+        with pytest.raises(UnprocessableDomainError):
+            await handle_update_obra(cmd, session)
+
+    @pytest.mark.asyncio
+    async def test_transicion_estado_valida_actualiza(self):
+        # borrador → en_progreso es válida
+        obra = _make_obra(id=12, usuario_id=2, estado="borrador")
+        session = AsyncMock()
+        session.get.return_value = obra
+        session.add = MagicMock()
+
+        cmd = UpdateObraCommand(id=12, estado="en_progreso")
+        result = await handle_update_obra(cmd, session)
+
+        assert result.estado == "en_progreso"
+        session.commit.assert_awaited_once()

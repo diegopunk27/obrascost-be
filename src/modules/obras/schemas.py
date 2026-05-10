@@ -4,6 +4,26 @@ from pydantic import BaseModel, Field
 
 ESTADOS_VALIDOS = {"borrador", "en_progreso", "pausada", "finalizada", "cancelada"}
 
+# Máquina de estados: estado actual → estados destino permitidos.
+# Estados terminales (finalizada, cancelada) no admiten más transiciones.
+TRANSICIONES_VALIDAS: dict[str, set[str]] = {
+    "borrador": {"en_progreso", "cancelada"},
+    "en_progreso": {"pausada", "finalizada", "cancelada"},
+    "pausada": {"en_progreso", "cancelada"},
+    "finalizada": set(),
+    "cancelada": set(),
+}
+
+
+def es_transicion_valida(actual: str, nuevo: str) -> bool:
+    """Devuelve True si se puede pasar de ``actual`` a ``nuevo``.
+
+    Idempotente: si ``actual == nuevo``, retorna True.
+    """
+    if actual == nuevo:
+        return True
+    return nuevo in TRANSICIONES_VALIDAS.get(actual, set())
+
 
 class ObraCreate(BaseModel):
     nombre: str = Field(min_length=3, max_length=200)

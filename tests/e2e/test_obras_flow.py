@@ -111,3 +111,59 @@ async def test_validacion_superficie_negativa_devuelve_422(
     payload["superficie_m2"] = -50.0
     response = await client.post("/obras", json=payload, headers=auth_headers)
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_eliminar_obra_no_borrador_devuelve_422(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    create_resp = await client.post("/obras", json=_payload_obra(), headers=auth_headers)
+    obra_id = create_resp.json()["id"]
+
+    # Mover a en_progreso (transición válida desde borrador)
+    upd = await client.patch(
+        f"/obras/{obra_id}", json={"estado": "en_progreso"}, headers=auth_headers
+    )
+    assert upd.status_code == 200
+
+    # Intentar borrar → 422 porque ya no está en borrador
+    delete_resp = await client.delete(f"/obras/{obra_id}", headers=auth_headers)
+    assert delete_resp.status_code == 422
+
+    # La obra sigue existiendo
+    get_resp = await client.get(f"/obras/{obra_id}", headers=auth_headers)
+    assert get_resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_transicion_estado_invalida_devuelve_422(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    create_resp = await client.post("/obras", json=_payload_obra(), headers=auth_headers)
+    obra_id = create_resp.json()["id"]
+
+    # borrador → finalizada NO es válida
+    response = await client.patch(
+        f"/obras/{obra_id}", json={"estado": "finalizada"}, headers=auth_headers
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_transicion_estado_valida_actualiza(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    create_resp = await client.post("/obras", json=_payload_obra(), headers=auth_headers)
+    obra_id = create_resp.json()["id"]
+
+    # Camino largo válido: borrador → en_progreso → pausada → en_progreso → finalizada
+    for nuevo in ["en_progreso", "pausada", "en_progreso", "finalizada"]:
+        upd = await client.patch(f"/obras/{obra_id}", json={"estado": nuevo}, headers=auth_headers)
+        assert upd.status_code == 200, upd.text
+        assert upd.json()["estado"] == nuevo
+
+    # Estado terminal: finalizada → en_progreso debería fallar
+    upd = await client.patch(
+        f"/obras/{obra_id}", json={"estado": "en_progreso"}, headers=auth_headers
+    )
+    assert upd.status_code == 422

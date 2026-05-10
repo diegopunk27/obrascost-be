@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     jwt_secret: str = "change_me_in_production"
     jwt_issuer: str = "app"
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 60 * 24 * 7
+    jwt_expire_minutes: int = 60
 
     ai_api_base_url: str = "http://localhost:8080"
 
