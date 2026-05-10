@@ -89,7 +89,7 @@ class TestEnriquecerConIa:
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_timeout_degrada_a_none(self, monkeypatch):
+    async def test_timeout_degrada_con_alerta_visible(self, monkeypatch):
         import httpx
 
         respx.post(AI_URL).mock(side_effect=httpx.TimeoutException("timeout"))
@@ -103,7 +103,8 @@ class TestEnriquecerConIa:
 
         assert sugerencia is None
         assert ajuste is None
-        assert alertas == []
+        assert len(alertas) == 1
+        assert "tardó demasiado" in alertas[0]
 
     @respx.mock
     @pytest.mark.asyncio
